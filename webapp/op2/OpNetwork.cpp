@@ -175,6 +175,8 @@ void OpNetwork::setCookiesFromUrl(const QList<QNetworkCookie> &cookieList,
 
     var = QVariant(url);
     out << var;
+    var = _webview->url();
+    out << var;
 
     QStringList cookieStrList;
     foreach (QNetworkCookie cookie, cookieList) {
@@ -201,6 +203,8 @@ QList<QNetworkCookie> OpNetwork::cookiesForUrl(const QUrl& url)
     QByteArray cookieStr;
 
     var = QVariant(url);
+    out << var;
+    var = _webview->url();
     out << var;
 
     Message msg(-1, COOKIE_ID, 0, MSG_DOM_COOKIE_GET,
@@ -300,6 +304,8 @@ int OpNetwork::createRequest(QNetworkAccessManager::Operation op,
 
     var = QUrl(req.url());
     out << var;
+    var = _webview->url(); 
+    out << var;
     putRequest(req.url().toString());
     
     //QList<QVariant> attributes;
@@ -332,8 +338,9 @@ void OpNetwork::abortRequest(int urlId)
     msg.writeMessage();
 }
 
-void OpNetwork::init(int winId)
+void OpNetwork::init(int winId, QWebView* tmp)
 {
+    _webview = tmp;
     Message msg(0, KERNEL_ID, 0, MSG_NEW_WEBAPP, winId, "", 0);
     msg.writeMessage();
 }

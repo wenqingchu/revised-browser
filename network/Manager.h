@@ -46,6 +46,8 @@
 #include <QNetworkCookieJar>
 #include <QMap>
 
+#include <QUrl>
+
 class Message;
 class NetworkRequest;
 
@@ -62,7 +64,8 @@ public:
     QList<QNetworkCookie> cookiesForUrl(const QUrl& url);
 
     void removeRequest(NetworkRequest* req);
-    
+    QUrl firstUrl; 
+ 
 private:
     Manager();
 

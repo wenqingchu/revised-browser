@@ -49,6 +49,8 @@
 #include <QDebug>
 #include <QStringList>
 
+#include <QUrl>
+
 #if QT_VERSION >= 0x040500
 #include <QNetworkDiskCache>
 #include <QDesktopServices>
@@ -126,7 +128,7 @@ void Manager::dispatchMsg(Message* msg)
 {
     //qDebug() << "Network Get Msg:" << msg->getMsgType();
     if (msg->getMsgType() == MSG_FETCH_URL) {
-        m_requestQueue.append(new NetworkRequest(msg));
+        m_requestQueue.append(new NetworkRequest(msg, this));
     } else if (msg->getMsgType() == MSG_COOKIE_GET_RETURN) {
         handleCookieMap((char*) msg->getMsgData(), msg->getDataLen(),
                         msg->getMsgValue());
@@ -163,7 +165,9 @@ void Manager::setCookiesFromUrl(const QList<QNetworkCookie> &cookieList,
 
     var = QVariant(url);
     out << var;
-
+    var = QVariant(firstUrl);
+    out << var; 
+ 
     QStringList cookieStrList;
     foreach (QNetworkCookie cookie, cookieList) {
         cookieStrList.push_back(cookie.toRawForm());
@@ -188,6 +192,8 @@ QList<QNetworkCookie> Manager::cookiesForUrl(const QUrl& url)
     int reqId = m_reqId++;
 
     var = QVariant(url);
+    out << var;
+    var = QVariant(firstUrl);
     out << var;
 
     Message msg(NETWORK_ID, COOKIE_ID, 0, MSG_COOKIE_GET,

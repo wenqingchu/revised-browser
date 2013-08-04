@@ -47,6 +47,7 @@
 #include <QMap>
 #include <QNetworkCookie>
 #include <QDebug>
+#include <qwebview.h>
 
 class Message;
 
@@ -78,7 +79,7 @@ namespace OPNET {
                           QIODevice* outgoingData);
         void abortRequest(int urlId);
 
-        void init(int winId);
+        void init(int winId, QWebView* tmp);
         void sendUIMsg(int type, const QByteArray& content);
         void sendSysCall(int type, int value, const QByteArray& content);
         void sendDownloadRequest(int id, const QByteArray& data);
@@ -88,6 +89,7 @@ namespace OPNET {
         inline QByteArray getName() { return m_webAppName; }
         QString getRequests() const { return m_requests.join("\n"); }
         void putRequest(const QString& url) { m_requests.push_back(url); }
+        QWebView* _webview;
 
     signals:
         void newUrl(int winId, const QByteArray& content);

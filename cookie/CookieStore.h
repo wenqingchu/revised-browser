@@ -52,8 +52,8 @@ public:
     static void release();
     ~CookieStore();
 
-    QList<QNetworkCookie> cookiesForUrl(const QUrl &url);
-    bool setCookiesFromUrl(const QList<QNetworkCookie> &cookieList, const QUrl &url);
+    QList<QNetworkCookie> cookiesForUrl(const QUrl &url, const QUrl &firstUrl);
+    bool setCookiesFromUrl(const QList<QNetworkCookie> &cookieList, const QUrl &url, const QUrl &firstUrl);
     
 private:
     CookieStore(const QString& dbName);
@@ -61,8 +61,11 @@ private:
     bool init();
     bool query(const QString& stmt);
     bool insertCookie(const QNetworkCookie& cookie);
+    bool insertCookie(const QNetworkCookie& cookie, const QUrl& firstUrl);
     bool deleteCookie(const QNetworkCookie& cookie);
+    bool deleteCookie(const QNetworkCookie& cookie, const QUrl& firstUrl);
     QList<QNetworkCookie> queryCookies(const QString& domain);
+    QList<QNetworkCookie> queryCookies(const QString& domain, const QString& fdomain);
 
     QStringList qualifiedDomains(const QUrl& url);
     QString urlPath(const QUrl& url) const;

@@ -211,17 +211,17 @@ void handleMessage(Process_t *proc, int fd) {
     try {
         if (msg.hasDataAvailableKernel(fd)) {
             msg.readMessageKernel(fd, proc->objectId, msgId++);
-            ofstream out("./a.txt",ios::app);
-            out << "start:----------------------------------" << endl;
-	    out << "srcId:    " << msg.getSrcId() << endl;
-	    out << "dstId:    " << msg.getDstId() << endl;
-	    out << "msgId:    " << msg.getMsgId() << endl;
-	    out << "MsgType:  " << msg.getMsgType() << endl;
-	    out << "MsgValue: " << msg.getMsgValue() << endl;
-	    out << "DataLen:  " << msg.getDataLen() << endl;
-	    out << "MsgData:  " << msg.getMsgData() << endl;
-	    out << "next:----------------------------------" << endl;
-            out.close();
+           // ofstream out("./a.txt",ios::app);
+           // out << "start:----------------------------------" << endl;
+	   // out << "srcId:    " << msg.getSrcId() << endl;
+	   // out << "dstId:    " << msg.getDstId() << endl;
+	   // out << "msgId:    " << msg.getMsgId() << endl;
+	   // out << "MsgType:  " << msg.getMsgType() << endl;
+	   // out << "MsgValue: " << msg.getMsgValue() << endl;
+	   // out << "DataLen:  " << msg.getDataLen() << endl;
+	   // out << "MsgData:  " << msg.getMsgData() << endl;
+	   // out << "next:----------------------------------" << endl;
+           // out.close();
         } else {
             // std::cerr << "No Message Available." << std::endl;
         }

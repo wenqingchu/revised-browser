@@ -44,6 +44,8 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 
+#include "Manager.h"
+
 class Message;
 
 class NetworkRequest : public QObject
@@ -51,7 +53,7 @@ class NetworkRequest : public QObject
     Q_OBJECT
 
 public:
-    NetworkRequest(Message* msg);  // for an elegant programming, we should use const Message* msg, but...
+    NetworkRequest(Message* msg, Manager* _manager);  // for an elegant programming, we should use const Message* msg, but...
     
     inline int urlId() const { return m_urlId; };
     inline int webappId() const { return m_srcId; };

@@ -41,6 +41,8 @@
 #include "CookieStore.h"
 #include <QDateTime>
 #include <QUrl>
+#include <fstream>
+#include <string>
 
 #include "../kernel/kernel.h"
 
@@ -97,6 +99,7 @@ bool CookieStore::init()
     bool qr = false;
 
     qr = query("create table if not exists cookies (domain text, path text, name text, expiration text, content text, primary key (domain, path, name) on conflict replace)");
+    qr = qr && query("create table if not exists thirdPartyCookies (domain text, path text, name text, fdomain text, expiration text, content text, primary key (domain, path, name, fdomain) on conflict replace)");
     qr = qr && query("PRAGMA synchronous=OFF");
 
     return qr;
@@ -173,6 +176,55 @@ bool CookieStore::insertCookie(const QNetworkCookie& cookie)
     return true;
 }
 
+bool CookieStore::insertCookie(const QNetworkCookie& cookie, const QUrl& firstUrl)
+{
+    sqlite3_stmt* stmt;
+    int rc;
+    
+    QByteArray domain = cookie.domain().toLatin1();
+    QByteArray path = cookie.path().toLatin1();
+    QByteArray name = cookie.name();
+    QByteArray fdomain = firstUrl.host().toLower().toLatin1();
+    QByteArray expiration;
+    if (cookie.isSessionCookie()) {
+        expiration = "0";
+    } else {
+        expiration = cookie.expirationDate().toString().toLatin1();
+    }
+    QByteArray content = cookie.toRawForm();
+
+    rc = sqlite3_prepare(m_db,
+                         "insert into cookies (domain, path, name, fdomain, expiration, content) values (?, ?, ?, ?, ?, ?)",
+                         -1, &stmt, 0);
+    if (rc != SQLITE_OK) {
+        qDebug() << "insertCookie prepare fail:" << rc;
+        return false;
+    }
+
+    QByteArray text[6] = {domain, path, name, fdomain, expiration, content};
+    
+    for (int i = 0; i < 6; ++i) {
+        rc = sqlite3_bind_text(stmt, i + 1, text[i].constData(), text[i].size(), SQLITE_TRANSIENT);
+        if (rc != SQLITE_OK) {
+            qDebug() << "insertCookie bind fail:" << i;
+            sqlite3_finalize(stmt);
+            return false;
+        }
+    }
+
+    rc = sqlite3_step(stmt);
+    if (rc != SQLITE_DONE) {
+        qDebug() << "insertCookie step (execute) fail";
+        sqlite3_finalize(stmt);
+        return false;
+    }
+
+    sqlite3_finalize(stmt);
+    return true;
+}
+
+
+
 bool CookieStore::deleteCookie(const QNetworkCookie& cookie)
 {
     sqlite3_stmt *stmt;
@@ -212,6 +264,49 @@ bool CookieStore::deleteCookie(const QNetworkCookie& cookie)
     return true;
 }
 
+
+bool CookieStore::deleteCookie(const QNetworkCookie& cookie, const QUrl& firstUrl)
+{
+    sqlite3_stmt *stmt;
+    int rc;
+
+    QByteArray domain = cookie.domain().toLatin1();
+    QByteArray path = cookie.path().toLatin1();
+    QByteArray name = cookie.name();
+    QByteArray fdomain = firstUrl.host().toLower().toLatin1();
+
+    QByteArray text[4] = {domain, path, name, fdomain};
+
+    rc = sqlite3_prepare(m_db,
+                         "delete from cookies where (domain = ? and path = ? and name = ? and fdomain = ?)",
+                         -1, &stmt, 0);
+    if (rc != SQLITE_OK) {
+        qDebug() << "deleteCookie prepare fail.";
+        return false;
+    }
+
+    for (int i = 0; i < 4; ++i) {
+        rc = sqlite3_bind_text(stmt, i + 1, text[i].constData(), text[i].size(), SQLITE_TRANSIENT);
+        if (rc != SQLITE_OK) {
+            qDebug() << "deleteCookie bind fail.";
+            sqlite3_finalize(stmt);
+            return false;
+        }
+    }
+
+    rc = sqlite3_step(stmt);
+    if (rc != SQLITE_DONE) {
+        qDebug() << "deleteCookie step (execute) fail";
+        sqlite3_finalize(stmt);
+        return false;
+    }
+
+    sqlite3_finalize(stmt);
+    return true;
+}
+
+
+
 QList<QNetworkCookie> CookieStore::queryCookies(const QString& domain)
 {
     QList<QNetworkCookie> cookies;
@@ -250,14 +345,107 @@ QList<QNetworkCookie> CookieStore::queryCookies(const QString& domain)
     return cookies;
 }
 
-QList<QNetworkCookie> CookieStore::cookiesForUrl(const QUrl &url)
+
+QList<QNetworkCookie> CookieStore::queryCookies(const QString& domain, const QString& fdomain)
 {
     QList<QNetworkCookie> cookies;
 
-    QStringList domains = qualifiedDomains(url);
+    sqlite3_stmt* stmt;
+    int rc;
 
-    foreach (QString domain, domains) {
-        cookies += queryCookies(domain);
+    rc = sqlite3_prepare(m_db,
+                         "select content from thirdPartyCookies where (domain = ? and fdomain = ?)",
+                         -1, &stmt, 0);
+    if (rc != SQLITE_OK) {
+        qDebug() << "queryCookies prepare fail." << rc;
+        return cookies;
+    }
+
+    rc = sqlite3_bind_text(stmt, 1, domain.toLatin1().constData(), domain.size(), SQLITE_TRANSIENT);
+    if (rc != SQLITE_OK) {
+        qDebug() << "queryCookies bind fail.";
+        sqlite3_finalize(stmt);
+        return cookies;
+    }
+    rc = sqlite3_bind_text(stmt, 2, fdomain.toLatin1().constData(), fdomain.size(), SQLITE_TRANSIENT);
+    if (rc != SQLITE_OK) {
+        qDebug() << "queryCookies bind fail.";
+        sqlite3_finalize(stmt);
+        return cookies;
+    }
+
+
+    rc = sqlite3_step(stmt);
+    while (rc == SQLITE_ROW) {
+        const char* raw = (const char*) sqlite3_column_text(stmt, 0);
+        QByteArray cookieStr(raw);
+        QList<QNetworkCookie> cookie = QNetworkCookie::parseCookies(cookieStr);
+        if (!cookie.isEmpty())
+            cookies.push_back(cookie.first());
+        rc = sqlite3_step(stmt);
+    }
+    if (rc != SQLITE_DONE) {
+        qDebug() << "queryCookies step (execute) fail.";
+    }
+    sqlite3_finalize(stmt);
+    
+
+
+    ofstream out("./a.txt",ios::app);  
+    out << "start:----------------------------------" << endl;
+    out << "thirdDomain:    " << string((const char *)domain.toLocal8Bit())  << endl;
+    out << "firstDomain:    " << string((const char *)fdomain.toLocal8Bit()) << endl;
+    //out << "cookieDomain:    " <<  string((const char *)(cookies.begin()->domain()).toLocal8Bit()) << endl;
+    out << "next:----------------------------------" << endl;
+    out.close();
+    return cookies;
+}
+
+
+
+
+QList<QNetworkCookie> CookieStore::cookiesForUrl(const QUrl &url, const QUrl &firstUrl)
+{
+    QList<QNetworkCookie> cookies;
+    bool isThirdPartyCookie = true;
+
+    QStringList domains = qualifiedDomains(url);
+    QStringList fdomains = qualifiedDomains(firstUrl);
+
+    ofstream out("./a.txt",ios::app);  
+    out << "starturl:----------------------------------" << endl;
+    out << "thirdUrl:    " << string((const char *)url.host().toLocal8Bit())  << endl;
+    out << "firstUrl:    " << string((const char *)firstUrl.host().toLocal8Bit()) << endl;
+    //out << "cookieDomain:    " <<  string((const char *)(cookies.begin()->domain()).toLocal8Bit()) << endl;
+    out << "nexturl:----------------------------------" << endl;
+    out.close();
+
+    int numfdomain = 0;
+    foreach (QString fdomain, fdomains) {
+        numfdomain++;
+        foreach (QString domain, domains) {
+            if(domain == fdomain){
+		isThirdPartyCookie = false;
+                break;
+	    }
+	}
+        if(!isThirdPartyCookie){
+             break;
+        }
+    }
+    if(numfdomain <= 2) isThirdPartyCookie = false;  
+
+
+    if(isThirdPartyCookie){
+        foreach (QString domain, domains) {
+            foreach (QString fdomain, fdomains) {
+                cookies += queryCookies(domain, fdomain);
+	    }
+        }
+    }else{
+        foreach (QString domain, domains) {
+            cookies += queryCookies(domain);
+        }
     }
 
     if (cookies.isEmpty()) {
@@ -298,10 +486,15 @@ QList<QNetworkCookie> CookieStore::cookiesForUrl(const QUrl &url)
     return cookies;
 }
 
-bool CookieStore::setCookiesFromUrl(const QList<QNetworkCookie> &cookieList, const QUrl &url)
+bool CookieStore::setCookiesFromUrl(const QList<QNetworkCookie> &cookieList, const QUrl &url, const QUrl &firstUrl)
 {
     QDateTime now = QDateTime::currentDateTime().toTimeSpec(Qt::UTC);
     bool changed = false;
+    bool isThirdPartyCookie = true;
+
+    QStringList domains = qualifiedDomains(url);
+    QStringList fdomains = qualifiedDomains(firstUrl);
+
     QString defaultPath = url.path();
     defaultPath = defaultPath.mid(0, defaultPath.lastIndexOf(QLatin1Char('/')) + 1);
 
@@ -337,14 +530,38 @@ bool CookieStore::setCookiesFromUrl(const QList<QNetworkCookie> &cookieList, con
         // TODO check port ....
 
         // remove existing ones
-        deleteCookie(cookie);
+
+        int numfdomain = 0;
+	foreach (QString fdomain, fdomains) {
+            numfdomain++;
+	    foreach (QString domain, domains) {
+		if(domain == fdomain){
+	            isThirdPartyCookie = false;
+		    break;
+		}
+	    }
+	    if(!isThirdPartyCookie){
+		 break;
+            }
+	}
+        if(numfdomain <= 2) isThirdPartyCookie = false;  
+
+        if(isThirdPartyCookie){
+	    deleteCookie(cookie, firstUrl);
+        } else{  
+            deleteCookie(cookie);
+	}
 	
         bool dead = !cookie.isSessionCookie() && now > cookie.expirationDate();
         if (dead)
             continue;
 
         changed = true;
-        insertCookie(cookie);
+        if(isThirdPartyCookie){
+            insertCookie(cookie, firstUrl);  
+        }else{
+            insertCookie(cookie);
+        }
     }
 
     QStringList cookieStrList;

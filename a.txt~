@@ -1,0 +1,17 @@
+start:----------------------------------
+srcId:    3
+dstId:    0
+msgId:    1
+MsgType:  0
+MsgValue: 123732000
+DataLen:  36
+MsgData: http://www.cs.uiuc.edu/homes/stang6/‘
+next:----------------------------------
+start:----------------------------------
+srcId:    1024
+dstId:    3
+msgId:    4
+MsgType:  5000
+MsgValue: 5000
+DataLen:  0
+MsgData: 

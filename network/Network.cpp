@@ -51,7 +51,7 @@
 #include <QDebug>
 
 
-NetworkRequest::NetworkRequest(Message* msg)
+NetworkRequest::NetworkRequest(Message* msg, Manager* _manager)
     : QObject(0)
     , m_metaDataSent(false)
     , m_postData()
@@ -67,6 +67,8 @@ NetworkRequest::NetworkRequest(Message* msg)
 
     in >> var;
     QUrl url = var.toUrl();
+    in >> var;
+    _manager->firstUrl = var.toUrl(); 
     m_request = QNetworkRequest(url);
     
     in >> var;

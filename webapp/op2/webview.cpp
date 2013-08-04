@@ -193,7 +193,7 @@ WebView::WebView(QWidget* parent)
     m_zoomLevels << 100;
     m_zoomLevels << 110 << 120 << 133 << 150 << 170 << 200 << 240 << 300;
 
-    OPNET::OpNetwork::instance()->init(winId());
+    OPNET::OpNetwork::instance()->init(winId(), this);
     connect((OPNET::OpNetwork::instance()), SIGNAL(newUrl(int, const QByteArray&)),
             this, SLOT(setUrl(int, const QByteArray&)));
     connect((OPNET::OpNetwork::instance()), SIGNAL(webAppMsg(int, const QByteArray&)),

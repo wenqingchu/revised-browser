@@ -352,7 +352,7 @@ int main(int argc, char*argv[]) {
     //addToProcMap(createProc(jsArgv, JS_ID));
 
     webAppMgr = new WebAppMgr(procMap[UI_ID]->inFd[PIPE_WRITE]);
-    sleep(50);
+    //sleep(50);
 
     // enter the main loop
     sigemptyset(&mask);

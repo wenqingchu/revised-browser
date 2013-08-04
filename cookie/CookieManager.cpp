@@ -87,7 +87,7 @@ void CookieManager::activated(int fd)
 
 void CookieManager::dispatchMsg(Message* msg)
 {
-    QUrl url;
+    QUrl url, firstUrl;
     QList<QNetworkCookie> cookies;
     QByteArray data((char*) msg->getMsgData(), msg->getDataLen());
     QDataStream in(data);
@@ -97,15 +97,18 @@ void CookieManager::dispatchMsg(Message* msg)
         in >> var;
         url = var.toUrl();
         in >> var;
+        firstUrl = var.toUrl();
         cookies = QNetworkCookie::parseCookies(var.toString().toLatin1());
 
         if (!cookies.isEmpty())
-            m_store->setCookiesFromUrl(cookies, url);
+            m_store->setCookiesFromUrl(cookies, url, firstUrl);
 	
     } else if (msg->getMsgType() == MSG_COOKIE_GET || msg->getMsgType() == MSG_DOM_COOKIE_GET) {
         in >> var;
         url = var.toUrl();
-        cookies = m_store->cookiesForUrl(url);
+        in >> var; 
+        firstUrl = var.toUrl(); 
+        cookies = m_store->cookiesForUrl(url, firstUrl);
 
         QStringList cookieList;
         foreach (QNetworkCookie cookie, cookies) {
