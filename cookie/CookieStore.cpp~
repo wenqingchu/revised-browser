@@ -194,7 +194,7 @@ bool CookieStore::insertCookie(const QNetworkCookie& cookie, const QUrl& firstUr
     QByteArray content = cookie.toRawForm();
 
     rc = sqlite3_prepare(m_db,
-                         "insert into cookies (domain, path, name, fdomain, expiration, content) values (?, ?, ?, ?, ?, ?)",
+                         "insert into thirdPartyCookies (domain, path, name, fdomain, expiration, content) values (?, ?, ?, ?, ?, ?)",
                          -1, &stmt, 0);
     if (rc != SQLITE_OK) {
         qDebug() << "insertCookie prepare fail:" << rc;
@@ -278,7 +278,7 @@ bool CookieStore::deleteCookie(const QNetworkCookie& cookie, const QUrl& firstUr
     QByteArray text[4] = {domain, path, name, fdomain};
 
     rc = sqlite3_prepare(m_db,
-                         "delete from cookies where (domain = ? and path = ? and name = ? and fdomain = ?)",
+                         "delete from thirdPartyCookies  where (domain = ? and path = ? and name = ? and fdomain = ?)",
                          -1, &stmt, 0);
     if (rc != SQLITE_OK) {
         qDebug() << "deleteCookie prepare fail.";
@@ -336,6 +336,7 @@ QList<QNetworkCookie> CookieStore::queryCookies(const QString& domain)
         QList<QNetworkCookie> cookie = QNetworkCookie::parseCookies(cookieStr);
         if (!cookie.isEmpty())
             cookies.push_back(cookie.first());
+            //qDebug() << "queryCookies: " << cookie.first().domain() << cookie.first().path() << " name:  "<< QString(cookie.first().name());
         rc = sqlite3_step(stmt);
     }
     if (rc != SQLITE_DONE) {
@@ -391,13 +392,13 @@ QList<QNetworkCookie> CookieStore::queryCookies(const QString& domain, const QSt
     
 
 
-    ofstream out("./a.txt",ios::app);  
-    out << "start:----------------------------------" << endl;
-    out << "thirdDomain:    " << string((const char *)domain.toLocal8Bit())  << endl;
-    out << "firstDomain:    " << string((const char *)fdomain.toLocal8Bit()) << endl;
+    //ofstream out("./a.txt",ios::app);  
+    //out << "start:----------------------------------" << endl;
+    //out << "thirdDomain:    " << string((const char *)domain.toLocal8Bit())  << endl;
+    //out << "firstDomain:    " << string((const char *)fdomain.toLocal8Bit()) << endl;
     //out << "cookieDomain:    " <<  string((const char *)(cookies.begin()->domain()).toLocal8Bit()) << endl;
-    out << "next:----------------------------------" << endl;
-    out.close();
+    //out << "next:----------------------------------" << endl;
+    //out.close();
     return cookies;
 }
 
@@ -412,16 +413,18 @@ QList<QNetworkCookie> CookieStore::cookiesForUrl(const QUrl &url, const QUrl &fi
     QStringList domains = qualifiedDomains(url);
     QStringList fdomains = qualifiedDomains(firstUrl);
 
-    ofstream out("./a.txt",ios::app);  
-    out << "starturl:----------------------------------" << endl;
-    out << "thirdUrl:    " << string((const char *)url.host().toLocal8Bit())  << endl;
-    out << "firstUrl:    " << string((const char *)firstUrl.host().toLocal8Bit()) << endl;
+    //ofstream out("./a.txt",ios::app);  
+    //out << "starturl:----------------------------------" << endl;
+    //out << "thirdUrl:    " << string((const char *)url.host().toLocal8Bit())  << string((const char *)url.path().toLocal8Bit()) << endl;
+    //out << "Referer:    " << string((const char *)firstUrl.host().toLocal8Bit()) << endl;
     //out << "cookieDomain:    " <<  string((const char *)(cookies.begin()->domain()).toLocal8Bit()) << endl;
-    out << "nexturl:----------------------------------" << endl;
-    out.close();
+    //out << "cookie:----------------------------------" << endl;
+    
 
-    foreach (QString domain, domains) {
-        foreach (QString fdomain, fdomains) {
+    int numfdomain = 0;
+    foreach (QString fdomain, fdomains) {
+        numfdomain++;
+        foreach (QString domain, domains) {
             if(domain == fdomain){
 		isThirdPartyCookie = false;
                 break;
@@ -431,6 +434,7 @@ QList<QNetworkCookie> CookieStore::cookiesForUrl(const QUrl &url, const QUrl &fi
              break;
         }
     }
+    if(numfdomain <= 2) isThirdPartyCookie = false;  
 
 
     if(isThirdPartyCookie){
@@ -468,9 +472,14 @@ QList<QNetworkCookie> CookieStore::cookiesForUrl(const QUrl &url, const QUrl &fi
             i = cookies.erase(i);
             continue;
         }
-        ++i;
+
+        //QString name((*i).name());
+        //QString value((*i).value());
+	//out << "name:   "  << string((const char *)name.toLocal8Bit()) << "value:   "<< string((const char *)value.toLocal8Bit()) << endl;  
+        ++i; 
     }
 
+    //out.close();
     qSort(cookies.begin(), cookies.end(), shorterPaths);
 
     
@@ -495,6 +504,7 @@ bool CookieStore::setCookiesFromUrl(const QList<QNetworkCookie> &cookieList, con
     QString defaultPath = url.path();
     defaultPath = defaultPath.mid(0, defaultPath.lastIndexOf(QLatin1Char('/')) + 1);
 
+
     foreach (QNetworkCookie cookie, cookieList) {
 
         if (cookie.path().isEmpty()) {
@@ -503,6 +513,7 @@ bool CookieStore::setCookiesFromUrl(const QList<QNetworkCookie> &cookieList, con
         } else if (!checkPath(cookie, url)) {
             continue;
         }
+
 
         if (cookie.domain().isEmpty()) {
             // if the cookie doesn't have domain, assign one
@@ -524,12 +535,25 @@ bool CookieStore::setCookiesFromUrl(const QList<QNetworkCookie> &cookieList, con
             }
         }
 
+
         // TODO check port ....
 
         // remove existing ones
 
-	foreach (QString domain, domains) {
-	    foreach (QString fdomain, fdomains) {
+        //ofstream out1("./a.txt",ios::app); 
+        //out1 << "starturl:----------------------------------" << endl;
+        //out1 << "thirdUrl:    " << string((const char *)url.host().toLocal8Bit())  << string((const char *)url.path().toLocal8Bit()) << endl;
+        //out1 << "Referer:    " << string((const char *)firstUrl.host().toLocal8Bit()) << endl;
+        //out << "cookie:----------------------------------" << endl;
+        //QString name(cookie.name());
+        //QString value(cookie.value());
+	//out << "name:   "  << string((const char *)name.toLocal8Bit()) << "value:   "<< string((const char *)value.toLocal8Bit()) << endl; 
+        //out1.close();        
+
+	int numfdomain = 0;
+	foreach (QString fdomain, fdomains) {
+            numfdomain++;
+	    foreach (QString domain, domains) {
 		if(domain == fdomain){
 	            isThirdPartyCookie = false;
 		    break;
@@ -539,6 +563,7 @@ bool CookieStore::setCookiesFromUrl(const QList<QNetworkCookie> &cookieList, con
 		 break;
             }
 	}
+        if(numfdomain <= 1) isThirdPartyCookie = false;  
 
         if(isThirdPartyCookie){
 	    deleteCookie(cookie, firstUrl);
@@ -553,9 +578,19 @@ bool CookieStore::setCookiesFromUrl(const QList<QNetworkCookie> &cookieList, con
         changed = true;
         if(isThirdPartyCookie){
             insertCookie(cookie, firstUrl);  
+	    qDebug() << "\n insert thirdparty cookie \n";	
         }else{
             insertCookie(cookie);
         }
+        ofstream out("./a.txt",ios::app); 
+        out << "starturl:----------------------------------" << endl;
+        out << "thirdUrl:    " << string((const char *)url.host().toLocal8Bit())  << string((const char *)url.path().toLocal8Bit()) << endl;
+        out << "Referer:    " << string((const char *)firstUrl.host().toLocal8Bit()) << endl;
+        out << "cookie:----------------------------------" << endl;
+        QString name(cookie.name());
+        QString value(cookie.value());
+	out << "name:   "  << string((const char *)name.toLocal8Bit()) << "value:   "<< string((const char *)value.toLocal8Bit()) << endl; 
+        out.close();
     }
 
     QStringList cookieStrList;
@@ -575,7 +610,7 @@ QStringList CookieStore::qualifiedDomains(const QUrl& url)
     
     QStringList domains;
     domains.push_back(domain);
-    
+    if(domain == "") return domains; 
     domains.push_back(QLatin1Char('.') + domain);   // This doesn't obey RFC, but ...
 
     QStringList domainParts = domain.toLower().split(QLatin1Char('.'));

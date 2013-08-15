@@ -204,7 +204,7 @@ QList<QNetworkCookie> OpNetwork::cookiesForUrl(const QUrl& url)
 
     var = QVariant(url);
     out << var;
-    var = _webview::url();
+    var = _webview->url();
     out << var;
 
     Message msg(-1, COOKIE_ID, 0, MSG_DOM_COOKIE_GET,
@@ -304,8 +304,8 @@ int OpNetwork::createRequest(QNetworkAccessManager::Operation op,
 
     var = QUrl(req.url());
     out << var;
-    var = _webview::url(); 
-    out << var;
+    //var = _webview->url(); 
+    //out << var;
     putRequest(req.url().toString());
     
     //QList<QVariant> attributes;
@@ -314,6 +314,8 @@ int OpNetwork::createRequest(QNetworkAccessManager::Operation op,
     foreach (QByteArray headerName, req.rawHeaderList()) {
         headers[headerName] = QVariant(req.rawHeader(headerName));
     }
+    var = headers[QString("Referer")].toUrl();
+    out << var;
     var = QVariant(headers);
     out << var;
 

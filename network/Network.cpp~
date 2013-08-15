@@ -68,7 +68,7 @@ NetworkRequest::NetworkRequest(Message* msg, Manager* _manager)
     in >> var;
     QUrl url = var.toUrl();
     in >> var;
-    _manager.firstUrl = var.toUrl(); 
+    QUrl urlWebView = var.toUrl(); 
     m_request = QNetworkRequest(url);
     
     in >> var;
@@ -78,6 +78,17 @@ NetworkRequest::NetworkRequest(Message* msg, Manager* _manager)
         m_request.setRawHeader(iter.key().toLatin1(), iter.value().toByteArray());
         iter ++;
     }
+    m_request.setRawHeader("User-Agent", "Mozilla/5.0 (X11; Linux i686) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/28.0.1500.95 Safari/537.36");
+
+    _manager->firstUrl = headers[QString("Referer")].toString();
+    if(!(urlWebView == QString("") || _manager->firstUrl == QString(""))){
+	_manager->firstUrl = urlWebView;
+    }
+        
+
+    //qDebug() << " Url:  "<< url.host()  << url.path() ;
+    //qDebug() << " Referer:  "<< headers[QString("Referer")].toString() ;
+    //qDebug() << " Referer:  "<< headers[QString("Referer")].toUrl().host() << headers[QString("Referer")].toUrl().path() ;
 
     in >> var;
     m_postData = var.toByteArray();
@@ -100,7 +111,13 @@ void NetworkRequest::start()
     case QNetworkAccessManager::PostOperation:
         processPostData();
         m_reply = manager->post(m_request, m_postData);
-        //qDebug() << "Post:" << m_request.url().toString() << m_postData;
+        qDebug() << "Post:" << m_request.url().toString() << m_postData;
+        qDebug() << "User-Agent:" << QString(m_request.rawHeader("User-Agent")) ;
+     /*   if(m_reply->error() == QNetworkReply::NoError){
+		qDebug() << " No Error!";
+        } else{
+		qDebug() << " There is Error!";
+	}  */
         break;
     default:
         break;

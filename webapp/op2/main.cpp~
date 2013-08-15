@@ -46,8 +46,7 @@
 int main(int argc, char** argv)
 {
     QApplication app(argc, argv);
-    sleep(50);
-    app.setApplicationName("OpBrowser");
+    app.setApplicationName("rekonq/1.1");
 
 //    QWebSettings::setObjectCacheCapacities((16*1024*1024)/8, (16*1024*1024)/8, 16*1024*1024);
 //    QWebSettings::globalSettings()->setAttribute(QWebSettings::DeveloperExtrasEnabled, true);

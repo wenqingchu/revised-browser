@@ -100,9 +100,15 @@ void CookieManager::dispatchMsg(Message* msg)
         firstUrl = var.toUrl();
         in >> var;
         cookies = QNetworkCookie::parseCookies(var.toString().toLatin1());
+	if(msg->getMsgType() == MSG_COOKIE_SET){
+		qDebug() << "\n MSG_COOKIE_SET\n" ;
+	}else{
+		qDebug() << "\n MSG_DOM_COOKIE_SET\n" ;		
+	}
 
         if (!cookies.isEmpty()){
             m_store->setCookiesFromUrl(cookies, url, firstUrl);
+            qDebug() << "\n cookies is not empty!\n" ;
 	}
 	
     } else if (msg->getMsgType() == MSG_COOKIE_GET || msg->getMsgType() == MSG_DOM_COOKIE_GET) {
